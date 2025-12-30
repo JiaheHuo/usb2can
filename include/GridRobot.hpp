@@ -97,7 +97,7 @@ private:
   std::vector<float> kp_by_idx_;
   std::vector<float> kd_by_idx_;
 
-  std::unordered_map<std::string,int> idx_; // motorName -> active index
+  std::unordered_map<std::string,int> motor_idx_; // motorName -> active index
 
   DataBus databus_{0};
 

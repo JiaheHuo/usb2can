@@ -8,8 +8,7 @@
 #include <algorithm>
 
 // ====== DataBus: 单线程版本（无锁）======
-// 约定：main loop 是唯一读写者，不需要 mutex。
-// 如果你以后要多线程，再把 get/set 包一层锁即可。
+// 约定：main loop 是唯一读写者，不需要 mutex
 
 enum class CtrlMode : uint8_t {
   DISABLE = 0,
