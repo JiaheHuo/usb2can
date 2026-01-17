@@ -80,7 +80,6 @@ struct ImuConfig {
 
 struct UtilityConfig {
   std::string config_path;
-  std::string motor_config_file = "config/motors.yaml";
   std::vector<std::string> only_groups;
 
   int loop_hz = 1000;

@@ -143,7 +143,7 @@ GridRobot::Args GridRobot::parse_args(int argc, char** argv) {
     else if (k=="--help") {
       std::cout <<
         "Usage:\n"
-        "  ./motor_test --config config/motors.yaml \n"
+        "  ./motor_test --config config/config.yaml \n"
         "              [--only-group u1b1,u2b2]\n"
         "              [--rate 1000]\n"
         "              [--test damping|hold|fkik|policy]\n"

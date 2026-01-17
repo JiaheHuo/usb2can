@@ -1,4 +1,3 @@
-# config.yaml（建议：motor_config 字段可以删掉或保留但不再使用）
 only_groups: ["u1b1","u1b2"]
 loop_hz: 1000
 telemetry_hz: 10
@@ -13,42 +12,42 @@ can:
       buses:
         - channel: 1
           motors:
-            - { motorName: L_arm_1, id: 1, type: RS00, enabled: false, group: "u0b1"}
-            - { motorName: L_arm_2, id: 2, type: RS00, enabled: false, group: "u0b1"}
-            - { motorName: L_arm_3, id: 3, type: RS00, enabled: false, group: "u0b1"}
+            - { motorName: L_arm_1, id: 1, type: RS00, enabled: false, group: "u0b1", kp: 20, kd: 1.0 }
+            - { motorName: L_arm_2, id: 2, type: RS00, enabled: false, group: "u0b1", kp: 20, kd: 1.0 }
+            - { motorName: L_arm_3, id: 3, type: RS00, enabled: false, group: "u0b1", kp: 20, kd: 1.0 }
         - channel: 2
           motors:
-            - { motorName: R_arm_1, id: 1, type: RS00, enabled: false, group: "u0b2"}
-            - { motorName: R_arm_2, id: 2, type: RS00, enabled: false, group: "u0b2"}
-            - { motorName: R_arm_3, id: 3, type: RS00, enabled: false, group: "u0b2"}
+            - { motorName: R_arm_1, id: 1, type: RS00, enabled: false, group: "u0b2", kp: 20, kd: 1.0 }
+            - { motorName: R_arm_2, id: 2, type: RS00, enabled: false, group: "u0b2", kp: 20, kd: 1.0 }
+            - { motorName: R_arm_3, id: 3, type: RS00, enabled: false, group: "u0b2", kp: 20, kd: 1.0 }
 
     - name: usb2can1
       path: /dev/USB2CAN1
       buses:
         - channel: 1
           motors:
-            - { motorName: L_hip_pitch, default_joint_angle_rad:  0.25, default_motor_angle_rad:  0.25, id: 1, type: RS04, enabled: true, group: "u1b1"}
-            - { motorName: L_hip_roll,  default_joint_angle_rad:  0.00, default_motor_angle_rad:  0.00, id: 2, type: RS04, enabled: true, group: "u1b1"}
-            - { motorName: L_hip_yaw,   default_joint_angle_rad:  0.00, default_motor_angle_rad:  0.00, id: 3, type: RS02, enabled: true, group: "u1b1"}
+            - { motorName: L_hip_pitch, default_joint_angle_rad:  0.25, default_motor_angle_rad:  0.25, id: 1, type: RS04, enabled: true, group: "u1b1", kp: 150, kd: 2.0 }
+            - { motorName: L_hip_roll,  default_joint_angle_rad:  0.00, default_motor_angle_rad:  0.00, id: 2, type: RS04, enabled: true, group: "u1b1", kp: 90, kd: 2.0 }
+            - { motorName: L_hip_yaw,   default_joint_angle_rad:  0.00, default_motor_angle_rad:  0.00, id: 3, type: RS02, enabled: true, group: "u1b1", kp: 40, kd: 1.5 }
         - channel: 2
           motors:
-            - { motorName: L_knee,    default_joint_angle_rad: -0.45, default_motor_angle_rad: -0.45, id: 1, type: RS04, enabled: true, group: "u1b2"}
-            - { motorName: L_ankle_L, default_joint_angle_rad: -0.20, default_motor_angle_rad:  0.20, id: 2, type: RS02, enabled: true, group: "u1b2"}
-            - { motorName: L_ankle_R, default_joint_angle_rad:  0.00, default_motor_angle_rad: -0.20, id: 3, type: RS02, enabled: true, group: "u1b2"}
+            - { motorName: L_knee,    default_joint_angle_rad: -0.45, default_motor_angle_rad: -0.45, id: 1, type: RS04, enabled: true, group: "u1b2", kp: 150, kd: 2.0 }
+            - { motorName: L_ankle_L, default_joint_angle_rad: -0.20, default_motor_angle_rad:  0.20, id: 2, type: RS02, enabled: true, group: "u1b2", kp: 90, kd: 1.5 }
+            - { motorName: L_ankle_R, default_joint_angle_rad:  0.00, default_motor_angle_rad: -0.20, id: 3, type: RS02, enabled: true, group: "u1b2", kp: 90, kd: 1.5 }
 
     - name: usb2can2
       path: /dev/USB2CAN2
       buses:
         - channel: 1
           motors:
-            - { motorName: R_hip_pitch, default_joint_angle_rad: -0.25, default_motor_angle_rad: -0.25, id: 1, type: RS04, enabled: true, group: "u2b1"}
-            - { motorName: R_hip_roll,  default_joint_angle_rad:  0.00, default_motor_angle_rad:  0.00, id: 2, type: RS04, enabled: true, group: "u2b1"}
-            - { motorName: R_hip_yaw,   default_joint_angle_rad:  0.00, default_motor_angle_rad:  0.00, id: 3, type: RS02, enabled: true, group: "u2b1"}
+            - { motorName: R_hip_pitch, default_joint_angle_rad: -0.25, default_motor_angle_rad: -0.25, id: 1, type: RS04, enabled: true, group: "u2b1", kp: 150, kd: 2.0 }
+            - { motorName: R_hip_roll,  default_joint_angle_rad:  0.00, default_motor_angle_rad:  0.00, id: 2, type: RS04, enabled: true, group: "u2b1", kp: 90, kd: 2.0 }
+            - { motorName: R_hip_yaw,   default_joint_angle_rad:  0.00, default_motor_angle_rad:  0.00, id: 3, type: RS02, enabled: true, group: "u2b1", kp: 40, kd: 1.5 }
         - channel: 2
           motors:
-            - { motorName: R_knee,    default_joint_angle_rad:  0.45, default_motor_angle_rad:  0.45, id: 1, type: RS04, enabled: true, group: "u2b2"}
-            - { motorName: R_ankle_L, default_joint_angle_rad: -0.20, default_motor_angle_rad:  0.20, id: 2, type: RS02, enabled: true, group: "u2b2"}
-            - { motorName: R_ankle_R, default_joint_angle_rad:  0.00, default_motor_angle_rad: -0.20, id: 3, type: RS02, enabled: true, group: "u2b2"}
+            - { motorName: R_knee,    default_joint_angle_rad:  0.45, default_motor_angle_rad:  0.45, id: 1, type: RS04, enabled: true, group: "u2b2", kp: 150, kd: 2.0 }
+            - { motorName: R_ankle_L, default_joint_angle_rad: -0.20, default_motor_angle_rad:  0.20, id: 2, type: RS02, enabled: true, group: "u2b2", kp: 90, kd: 1.5 }
+            - { motorName: R_ankle_R, default_joint_angle_rad:  0.00, default_motor_angle_rad: -0.20, id: 3, type: RS02, enabled: true, group: "u2b2", kp: 90, kd: 1.5 }
 
 
 gains:
@@ -62,20 +61,21 @@ gains:
 limits:
   torque_max:   [120,120,17,120,34,17,120,120,17,120,34,17]
   velocity_max: [ 21, 21,43, 21,43,43, 21, 21,43, 21,43,43]
-  position: 
+  position:
     default:       { min: -1.8, max: 1.8 }
-    L_hip_pitch:   { min: -0.0,  max: 0.8 }
-    L_hip_roll:    { min: -0.3,  max: 0.1 }
-    L_hip_yaw:     { min: -0.9,  max: 0.9 }
-    L_knee:        { min: -1.58, max: 0.05 }
-    L_ankle_pitch: { min: -0.5,  max: 0.1 }
-    L_ankle_roll:  { min: -0.12, max: 0.12 }
-    R_hip_pitch:   { min: -0.8,  max: 0.0 }
-    R_hip_roll:    { min: -0.1,  max: 0.3 }
-    R_hip_yaw:     { min: -0.9,  max: 0.9 }
-    R_knee:        { min: -0.05, max: 1.58 }
-    R_ankle_pitch: { min: -0.5,  max: 0.1 }
-    R_ankle_roll:  { min: -0.12, max: 0.12 }
+    joints:
+      L_hip_pitch:   { min: -0.0,  max: 0.8 }
+      L_hip_roll:    { min: -0.3,  max: 0.1 }
+      L_hip_yaw:     { min: -0.9,  max: 0.9 }
+      L_knee:        { min: -1.58, max: 0.05 }
+      L_ankle_pitch: { min: -0.5,  max: 0.1 }
+      L_ankle_roll:  { min: -0.12, max: 0.12 }
+      R_hip_pitch:   { min: -0.8,  max: 0.0 }
+      R_hip_roll:    { min: -0.1,  max: 0.3 }
+      R_hip_yaw:     { min: -0.9,  max: 0.9 }
+      R_knee:        { min: -0.05, max: 1.58 }
+      R_ankle_pitch: { min: -0.5,  max: 0.1 }
+      R_ankle_roll:  { min: -0.12, max: 0.12 }
 
 rl:
   policy: /home/jhuo/rl_learning/humanoid-gym/logs/DreamBot_ppo/exported/policies/l27900.pt

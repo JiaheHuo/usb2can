@@ -47,8 +47,8 @@ int main(int argc, char** argv) {
                    ? cfg.initial_joint_pos.at(cfg.joint_names[i])
                    : 0.f;
     jc.dq_des = 0.f;
-    jc.kp = cfg.fixed_gains.kp;
-    jc.kd = cfg.fixed_gains.kd;
+    jc.kp = cfg.fixed_gains.kp_at(static_cast<int>(i));
+    jc.kd = cfg.fixed_gains.kd_at(static_cast<int>(i));
     bus.update_joint_cmd(i, jc);
   }
 

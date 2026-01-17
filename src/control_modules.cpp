@@ -403,15 +403,16 @@ void Mapping::write_motor_cmds_(const BusSnapshot& snap, const UtilityConfig& cf
     const JointCmd jc = snap.joint_cmds[i];
     MotorCmd mc{};
     if (jc.enable) {
-      const float kp = jc.kp > 0.f ? jc.kp : cfg.running_gains.kp;
-      const float kd = jc.kd > 0.f ? jc.kd : cfg.running_gains.kd;
+      const float kp = jc.kp > 0.f ? jc.kp : cfg.running_gains.kp_at(i);
+      const float kd = jc.kd > 0.f ? jc.kd : cfg.running_gains.kd_at(i);
 
       const std::string name = cfg.joint_names[i];
       float q_des = jc.q_des; 
       float dq_des = jc.dq_des;
       q_des = util_.clip_position(name, q_des);
-      if(dq_des > cfg.limits.vel_max) dq_des =  cfg.limits.vel_max;
-      if(dq_des <-cfg.limits.vel_max) dq_des = -cfg.limits.vel_max;
+      const float vel_limit = cfg.limits.vel_max_at(i);
+      if(dq_des > vel_limit) dq_des =  vel_limit;
+      if(dq_des <-vel_limit) dq_des = -vel_limit;
 
       mc.enable = true;
       mc.mode = CtrlMode::MOTION;
@@ -449,10 +450,10 @@ void Mapping::map_ankle_torque_(const AnkleIndices& idx, const BusSnapshot& snap
     return;
   }
 
-  const float kp_p = pitch_cmd.kp > 0.f ? pitch_cmd.kp : cfg.running_gains.kp;
-  const float kd_p = pitch_cmd.kd > 0.f ? pitch_cmd.kd : cfg.running_gains.kd;
-  const float kp_r = roll_cmd.kp > 0.f ? roll_cmd.kp : cfg.running_gains.kp;
-  const float kd_r = roll_cmd.kd > 0.f ? roll_cmd.kd : cfg.running_gains.kd;
+  const float kp_p = pitch_cmd.kp > 0.f ? pitch_cmd.kp : cfg.running_gains.kp_at(idx.jp);
+  const float kd_p = pitch_cmd.kd > 0.f ? pitch_cmd.kd : cfg.running_gains.kd_at(idx.jp);
+  const float kp_r = roll_cmd.kp > 0.f ? roll_cmd.kp : cfg.running_gains.kp_at(idx.jr);
+  const float kd_r = roll_cmd.kd > 0.f ? roll_cmd.kd : cfg.running_gains.kd_at(idx.jr);
 
   const float tau_pitch = kp_p * static_cast<float>(pitch_cmd.q_des - pitch_state.q_joint) +
                           kd_p * static_cast<float>(pitch_cmd.dq_des - pitch_state.dq_joint);
@@ -653,8 +654,8 @@ void RLLocomotion::write_joint_targets_(const std::vector<float>& action,
     jc.q_des = target;
     jc.dq_des = 0.f;
     jc.tau_ff = 0.f;
-    jc.kp = cfg.running_gains.kp;
-    jc.kd = cfg.running_gains.kd;
+    jc.kp = cfg.running_gains.kp_at(i);
+    jc.kd = cfg.running_gains.kd_at(i);
     jc.enable = true;
     bus_.update_joint_cmd(i, jc);
   }

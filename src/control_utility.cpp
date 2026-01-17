@@ -54,6 +54,57 @@ std::vector<std::string> parse_only_groups(const YAML::Node& n) {
   return out;
 }
 
+std::vector<float> parse_float_list(const YAML::Node& n) {
+  std::vector<float> out;
+  if (!n) return out;
+  if (n.IsSequence()) {
+    for (auto v : n) out.push_back(v.as<float>());
+  } else if (n.IsScalar()) {
+    out.push_back(n.as<float>());
+  }
+  return out;
+}
+
+void apply_gain_node(const YAML::Node& node, ControlGains& gains, bool is_kp) {
+  if (!node) return;
+  if (node.IsSequence()) {
+    auto vals = parse_float_list(node);
+    if (is_kp) gains.kp = std::move(vals);
+    else gains.kd = std::move(vals);
+    const auto& ref = is_kp ? gains.kp : gains.kd;
+    if (!ref.empty()) {
+      if (is_kp) gains.kp_default = ref.front();
+      else gains.kd_default = ref.front();
+    }
+  } else if (node.IsScalar()) {
+    const float v = node.as<float>();
+    if (is_kp) gains.kp_default = v;
+    else gains.kd_default = v;
+  }
+}
+
+void apply_limit_vector(const YAML::Node& node, std::vector<float>& out_vec, float& fallback) {
+  if (!node) return;
+  if (node.IsSequence()) {
+    out_vec = parse_float_list(node);
+    if (!out_vec.empty()) fallback = out_vec.front();
+  } else if (node.IsScalar()) {
+    fallback = node.as<float>();
+  }
+}
+
+void apply_joint_limits(const YAML::Node& node, MotorLimits& limits) {
+  if (!node || !node.IsMap()) return;
+  for (auto it = node.begin(); it != node.end(); ++it) {
+    const std::string name = it->first.as<std::string>();
+    if (name == "default" || name == "min" || name == "max" || name == "joints") continue;
+    JointLimit jl = limits.position;
+    if ((*it)["min"]) jl.min = (*it)["min"].as<float>();
+    if ((*it)["max"]) jl.max = (*it)["max"].as<float>();
+    limits.per_joint[name] = jl;
+  }
+}
+
 } // namespace
 
 Utility::Utility(const std::string& config_path)
@@ -142,40 +193,36 @@ void Utility::load_config_() {
   next.telemetry_hz = root["telemetry_hz"] ? root["telemetry_hz"].as<int>() : 10;
   next.simulate = root["simulate"] ? root["simulate"].as<bool>() : false;
 
-  next.motor_config_file = root["motor_config"]
-                               ? root["motor_config"].as<std::string>()
-                               : std::string("config/motors.yaml");
   next.only_groups = parse_only_groups(root["only_groups"]);
 
   if (auto gains = root["gains"]) {
     if (gains["fixed"]) {
-      next.fixed_gains.kp = gains["fixed"]["kp"] ? gains["fixed"]["kp"].as<float>() : next.fixed_gains.kp;
-      next.fixed_gains.kd = gains["fixed"]["kd"] ? gains["fixed"]["kd"].as<float>() : next.fixed_gains.kd;
+      apply_gain_node(gains["fixed"]["kp"], next.fixed_gains, true);
+      apply_gain_node(gains["fixed"]["kd"], next.fixed_gains, false);
     }
     if (gains["running"]) {
-      next.running_gains.kp = gains["running"]["kp"] ? gains["running"]["kp"].as<float>() : next.running_gains.kp;
-      next.running_gains.kd = gains["running"]["kd"] ? gains["running"]["kd"].as<float>() : next.running_gains.kd;
+      apply_gain_node(gains["running"]["kp"], next.running_gains, true);
+      apply_gain_node(gains["running"]["kd"], next.running_gains, false);
     }
   }
 
   next.limits.per_joint = default_joint_limits();
   if (auto limits = root["limits"]) {
-    if (limits["torque_max"]) next.limits.torque_max = limits["torque_max"].as<float>();
-    if (limits["velocity_max"]) next.limits.vel_max = limits["velocity_max"].as<float>();
+    apply_limit_vector(limits["torque_max"], next.limits.torque_max_vec, next.limits.torque_max);
+    apply_limit_vector(limits["velocity_max"], next.limits.vel_max_vec, next.limits.vel_max);
     if (limits["position"]) {
       auto pos = limits["position"];
-      if (pos["min"]) next.limits.position.min = pos["min"].as<float>();
-      if (pos["max"]) next.limits.position.max = pos["max"].as<float>();
-    }
-    if (limits["joints"]) {
-      for (auto it = limits["joints"].begin(); it != limits["joints"].end(); ++it) {
-        const std::string name = it->first.as<std::string>();
-        JointLimit jl = next.limits.position;
-        if ((*it)["min"]) jl.min = (*it)["min"].as<float>();
-        if ((*it)["max"]) jl.max = (*it)["max"].as<float>();
-        next.limits.per_joint[name] = jl;
+      if (pos["default"]) {
+        if (pos["default"]["min"]) next.limits.position.min = pos["default"]["min"].as<float>();
+        if (pos["default"]["max"]) next.limits.position.max = pos["default"]["max"].as<float>();
+      } else {
+        if (pos["min"]) next.limits.position.min = pos["min"].as<float>();
+        if (pos["max"]) next.limits.position.max = pos["max"].as<float>();
       }
+      if (pos["joints"]) apply_joint_limits(pos["joints"], next.limits);
+      apply_joint_limits(pos, next.limits);
     }
+    if (limits["joints"]) apply_joint_limits(limits["joints"], next.limits);
   }
 
   if (auto rl = root["rl"]) {
@@ -203,8 +250,8 @@ void Utility::load_config_() {
     if (imu["baud"]) next.imu.baud = imu["baud"].as<int>();
   }
 
-  // Parse motor layout from existing YAML
-  next.can = load_config_yaml(next.motor_config_file);
+  // Parse motor layout from config YAML
+  next.can = load_config_yaml(config_path_);
 
   auto add_motor = [&](const MotorSpec& ms, int dev_idx, const std::string& dev_name,
                        const std::string& dev_path, uint8_t channel) {
