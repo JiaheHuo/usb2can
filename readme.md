@@ -33,13 +33,13 @@ sudo chmod +777 /dev/ttyUSB0
 *DAMPING MODE TO CHECK TELEMETRY FUNCTION*
 
 ```
- ./motor_test --config ../config/motors.yaml --test damping --rate 1000 --telemetry-hz 10 --kd 2.0
+ ./motor_test --config ../config/config.yaml --test damping --rate 1000 --telemetry-hz 10 --kd 2.0
 ```
 
 *HOLD MODE TO CHECK KP AND KD SETTING*
 
 ```
-./motor_test --config ../config/motors.yaml --test hold --rate 1000 --telemetry-hz 10
+./motor_test --config ../config/config.yaml --test hold --rate 1000 --telemetry-hz 10
 ```
 
 
@@ -47,7 +47,7 @@ sudo chmod +777 /dev/ttyUSB0
 POLICY TEST
 
 ```
-./motor_test --config ../config/motors.yaml --test policy --rate 1000 --telemetry-hz 50
+./motor_test --config ../config/config.yaml --test policy --rate 1000 --telemetry-hz 50
 ```
 
 

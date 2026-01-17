@@ -13,13 +13,14 @@ static uint8_t parse_u8_any(const YAML::Node& n) {
 
 AppConfig load_config_yaml(const std::string& file) {
   YAML::Node root = YAML::LoadFile(file);
+  YAML::Node can_root = root["can"] ? root["can"] : root;
   AppConfig cfg;
 
-  if (root["master_id"]) cfg.master_id = parse_u8_any(root["master_id"]);
+  if (can_root["master_id"]) cfg.master_id = parse_u8_any(can_root["master_id"]);
 
-  if (!root["devices"]) throw std::runtime_error("YAML missing 'devices'");
+  if (!can_root["devices"]) throw std::runtime_error("YAML missing 'devices'");
 
-  for (const auto& devN : root["devices"]) {
+  for (const auto& devN : can_root["devices"]) {
     DeviceSpec dev;
     dev.name = devN["name"].as<std::string>();
     dev.path = devN["path"].as<std::string>();

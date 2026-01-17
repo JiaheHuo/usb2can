@@ -32,7 +32,7 @@ struct AnkleIdx {
 class GridRobot {
 public:
   struct Args {
-    std::string config = "../config/motors.yaml";
+    std::string config = "../config/config.yaml";
     std::string only_group_csv;      // e.g. "u1b1,u2b2"
     bool skip_zero_sta = true;  // 跳过 set_zero_sta
     bool skip_set_zero = false;  // 跳过 set_zero
