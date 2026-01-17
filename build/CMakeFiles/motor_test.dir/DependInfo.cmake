@@ -19,6 +19,10 @@ set(CMAKE_CXX_COMPILER_ID "GNU")
 set(CMAKE_TARGET_DEFINITIONS_CXX
   "RS_DO_MOTOR_INIT=1"
   "RS_ENABLE_TELEMETRY=1"
+  "USE_C10D_GLOO"
+  "USE_DISTRIBUTED"
+  "USE_RPC"
+  "USE_TENSORPIPE"
   )
 
 # The include file search paths:
@@ -26,6 +30,8 @@ set(CMAKE_CXX_TARGET_INCLUDE_PATH
   "../include"
   "../third_party/tangair_usb2can"
   "/home/jhuo/model_based_control/cyborg-test-static-arm/src/src/azureloong_control/third_party/eigen3"
+  "/opt/libtorch/include"
+  "/opt/libtorch/include/torch/csrc/api/include"
   )
 
 # Targets to which this target links.

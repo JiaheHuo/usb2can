@@ -25,7 +25,6 @@ public:
   {
     open(dev_path);
   }
-
   void open(const std::string& dev_path) {
     path_ = dev_path;
     fd_ = openUSBCAN(dev_path.c_str());
@@ -34,6 +33,8 @@ public:
     // 初始化 last_tx_tp_，让第一次 send() 不被“补偿睡眠”影响
     auto now = std::chrono::steady_clock::now();
     for (auto& tp : last_tx_tp_) tp = now;
+
+    next_tx_tp_ = std::chrono::steady_clock::now();
   }
 
   ~Usb2CanDevice() {
@@ -45,7 +46,8 @@ public:
 
   void set_tx_delay_us(int us) { tx_delay_us_ = us; }
 
-  void send(uint8_t channel, uint32_t eid, const std::array<uint8_t,8>& data, uint8_t dlc=8) {
+  bool send(uint8_t channel, uint32_t eid, const std::array<uint8_t,8>& data, uint8_t dlc=8) 
+  {
     if (fd_ < 0) throw std::runtime_error("Usb2CanDevice::send called but device not opened: " + path_);
     if (channel < 1 || channel > 2) throw std::runtime_error("Usb2CanDevice::send invalid channel (expect 1/2)");
 
@@ -69,9 +71,20 @@ public:
     info.dataLength = dlc;
 
     uint8_t raw[8];
-    for (int i=0;i<8;i++) raw[i] = data[i];
+    for (int i = 0; i < 8; i++)
+      raw[i] = data[i];
 
-    (void)sendUSBCAN(fd_, channel, &info, raw);
+    if (tx_delay_us_ > 0)
+    {
+      std::lock_guard<std::mutex> lk(tx_mu_global_);
+      auto now = std::chrono::steady_clock::now();
+      if (now < next_tx_tp_)
+        std::this_thread::sleep_until(next_tx_tp_);
+      next_tx_tp_ = std::chrono::steady_clock::now() + std::chrono::microseconds(tx_delay_us_);
+    }
+
+    int ret = sendUSBCAN(fd_, channel, &info, raw);
+    return true;
   }
 
   bool recv(Usb2CanFrame& out, int timeout_us) {
@@ -99,4 +112,6 @@ private:
   int tx_delay_us_{75};
   std::array<std::mutex, 3> tx_mu_;
   std::array<std::chrono::steady_clock::time_point, 3> last_tx_tp_;
+  std::mutex tx_mu_global_;
+  std::chrono::steady_clock::time_point next_tx_tp_{};
 };

@@ -185,7 +185,11 @@ motor_test: CMakeFiles/motor_test.dir/src/GridRobot.cpp.o
 motor_test: CMakeFiles/motor_test.dir/src/witmotion_imu.cpp.o
 motor_test: CMakeFiles/motor_test.dir/build.make
 motor_test: /usr/lib/x86_64-linux-gnu/libyaml-cpp.so.0.6.2
+motor_test: /opt/libtorch/lib/libtorch.so
+motor_test: /opt/libtorch/lib/libc10.so
+motor_test: /opt/libtorch/lib/libkineto.a
 motor_test: ../third_party/tangair_usb2can/libusb_can.so
+motor_test: /opt/libtorch/lib/libc10.so
 motor_test: CMakeFiles/motor_test.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/jhuo/robstride_usb2can_ctrl/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Linking CXX executable motor_test"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/motor_test.dir/link.txt --verbose=$(VERBOSE)

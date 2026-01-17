@@ -1,6 +1,8 @@
 #include "motor.hpp"
 #include <cstring>
 
+static constexpr uint16_t RS_PARAM_ZERO_STA = 0x7029; //
+
 RobStrideMotor::RobStrideMotor(BusHandle bus, uint8_t master_id, uint8_t motor_id, ActuatorType type,
                                std::string group, Stats* stats, int stats_idx, std::string motorName)
 : bus_(bus), master_id_(master_id), motor_id_(motor_id), type_(type),
@@ -83,8 +85,15 @@ void RobStrideMotor::send_motion_command(float torque, float pos_rad, float vel_
   rs::be16_store(data, 4, kp_u);
   rs::be16_store(data, 6, kd_u);
 
-  bus_.dev->send(bus_.channel, eid, data, 8);
-  if (stats_) stats_->inc_tx_motion(stats_idx_);
+  bool ok = bus_.dev->send(bus_.channel, eid, data, 8);
+  if (stats_)
+  {
+    stats_->inc_tx_motion(stats_idx_); // attempt
+    if (ok)
+      stats_->inc_tx_motion_ok(stats_idx_);
+    else
+      stats_->inc_tx_motion_fail(stats_idx_);
+  }
 }
 
 void RobStrideMotor::on_frame(const Usb2CanFrame& f) {
@@ -110,13 +119,87 @@ void RobStrideMotor::on_frame(const Usb2CanFrame& f) {
       has_pvtt_ = true;
     }
     if (stats_) stats_->inc_rx_status(stats_idx_);
-  } else {
-    if (stats_) stats_->inc_rx_other(stats_idx_);
+    return;
   }
+  if(meta.comm_type == (uint8_t)rs::Comm::GetParam) {
+    // Byte0~1 index: little-endian
+    uint16_t idx = rs::le16_load(f.data.data(), 0);
+    // Byte4~7 value: little-endian
+    uint32_t val = rs::le32_load(f.data.data(), 4);
+    {
+      std::lock_guard<std::mutex> lk(mu_);
+      last_param_index_ = idx;
+      last_param_u32_   = val;
+      last_param_valid_ = true;
+      last_param_seq_++;
+    }
+    cv_param_.notify_all();
+    if (stats_) stats_->inc_rx_other(stats_idx_);
+    return;
+  }
+  if(stats_) stats_->inc_rx_other(stats_idx_);
 }
 
 std::optional<PVTT> RobStrideMotor::last_pvtt() const {
   std::lock_guard<std::mutex> lk(mu_);
   if (!has_pvtt_) return std::nullopt;
   return pvtt_;
+}
+
+void RobStrideMotor::data_save() {
+  std::array<uint8_t,8> data{}; // 通信类型22 电机数据保存帧 8Byte 数据区
+
+  data = {1,2,3,4,5,6,7,8};
+  uint32_t eid = rs::make_eid((uint8_t)rs::Comm::DataSave, master_id_, motor_id_);
+
+  bus_.dev->send(bus_.channel, eid, data, 8);
+  if (stats_) stats_->inc_tx_other(stats_idx_);
+}
+
+std::optional<uint32_t> RobStrideMotor::get_param_u32_blocking(uint16_t index, int timeout_ms) {
+  uint32_t start_seq = 0;
+  {
+    std::lock_guard<std::mutex> lk(mu_);
+    start_seq = last_param_seq_;
+  }
+
+  get_param(index);
+
+  std::unique_lock<std::mutex> lk(mu_);
+  bool ok = cv_param_.wait_for(
+      lk, std::chrono::milliseconds(timeout_ms),
+      [&]{
+        return last_param_valid_ &&
+               last_param_index_ == index &&
+               last_param_seq_ != start_seq;
+      });
+
+  if (!ok) return std::nullopt;
+  return last_param_u32_;
+}
+
+std::optional<float> RobStrideMotor::get_param_f32_blocking(uint16_t index, int timeout_ms) {
+  auto u = get_param_u32_blocking(index, timeout_ms);
+  if (!u) return std::nullopt;
+  float f = 0.f;
+  std::memcpy(&f, &(*u), 4);
+  return f;
+}
+
+std::optional<uint8_t> RobStrideMotor::get_zero_sta(int timeout_ms) {
+  auto u = get_param_u32_blocking(RS_PARAM_ZERO_STA, timeout_ms);
+  if (!u) return std::nullopt;
+  return (uint8_t)(*u & 0xFF);
+}
+
+bool RobStrideMotor::set_zero_sta(uint8_t v, bool persist, int timeout_ms) {
+  // v: 0 -> 0~2π, 1 -> -π~π
+  set_param_u8(RS_PARAM_ZERO_STA, v);
+
+  if (persist) {
+    data_save(); // 掉电保持
+  }
+
+  auto rb = get_zero_sta(timeout_ms);
+  return rb && (*rb == v);
 }

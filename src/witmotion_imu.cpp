@@ -276,7 +276,7 @@ static std::atomic<bool> g_run{true};
 static void on_sigint(int){ g_run.store(false); }
 
 struct Args {
-  std::string port = "/dev/ttyUSB0";
+  std::string port = "/dev/imu";
   int baud = 115200;   // 你这份官方角度版本默认 115200
   int print_hz = 50;   // 控制打印频率
 };
@@ -296,7 +296,7 @@ static Args parse_args(int argc, char** argv) {
     else if (std::strcmp(argv[i], "--baud") == 0) a.baud = std::stoi(next("--baud"));
     else if (std::strcmp(argv[i], "--print_hz") == 0) a.print_hz = std::stoi(next("--print_hz"));
     else if (std::strcmp(argv[i], "--help") == 0) {
-      std::cout << "Usage: witmotion_imu --port /dev/ttyUSB0 --baud 921600 --print_hz 50\n";
+      std::cout << "Usage: witmotion_imu --port /dev/imu --baud 921600 --print_hz 50\n";
       std::exit(0);
     } else {
       std::cerr << "Unknown arg: " << argv[i] << " (use --help)\n";

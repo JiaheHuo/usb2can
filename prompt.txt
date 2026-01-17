@@ -1,0 +1,219 @@
+现在需要真刀真枪地接入policy、hold模式下保持一个默认joint姿态（当然发给motor的需要经过运动学IK）
+
+具体有以下需求：
+
+1. hold模式下不再保持全0，而是保持如下屈膝姿态        
+default_joint_angles = {  # = target angles [rad] when action = 0.0
+            'leg_l1_joint':  0.4,
+            'leg_l2_joint':  0.,
+            'leg_l3_joint':  0.,
+            'leg_l4_joint':  0.8,
+            'leg_l5_joint': -0.4,
+            'leg_l6_joint':  0.,
+            'leg_r1_joint': -0.4,
+            'leg_r2_joint':  0.,
+            'leg_r3_joint':  0.,
+            'leg_r4_joint':  0.8,
+            'leg_r5_joint': -0.4,
+            'leg_r6_joint':  0.,
+        }
+2. 安装ubuntu20.04(x86_64)适配的libtorh库 读取策略，路径为/home/jhuo/rl_learning/humanoid-gym/logs/DreamBot_ppo/exported/policies
+该策略需要的rlState与输出策略如下述sim2sim.py所示，进行学习总结。
+
+
+设置电机和imu都在1000hz,策略在100hz，mujoco使用pd得到的力矩进行控制，我们直接读取yaml里面的kp kd和策略+IK得到的motorCmd进行MOTION控制。从电机端得到信息后需要ankle的Fk处理得到合适的数据进行obs的填充，来做为策略的输入
+
+
+import math
+import numpy as np
+import mujoco, mujoco_viewer
+from tqdm import tqdm
+from collections import deque
+from scipy.spatial.transform import Rotation as R
+from humanoid import LEGGED_GYM_ROOT_DIR
+from humanoid.envs import XBotLCfg,DreamBotCfg
+import torch
+
+
+class cmd:
+    vx = 0.4
+    vy = 0.0
+    dyaw = 0.0
+
+
+def quaternion_to_euler_array(quat):
+    # Ensure quaternion is in the correct format [x, y, z, w]
+    x, y, z, w = quat
+    
+    # Roll (x-axis rotation)
+    t0 = +2.0 * (w * x + y * z)
+    t1 = +1.0 - 2.0 * (x * x + y * y)
+    roll_x = np.arctan2(t0, t1)
+    
+    # Pitch (y-axis rotation)
+    t2 = +2.0 * (w * y - z * x)
+    t2 = np.clip(t2, -1.0, 1.0)
+    pitch_y = np.arcsin(t2)
+    
+    # Yaw (z-axis rotation)
+    t3 = +2.0 * (w * z + x * y)
+    t4 = +1.0 - 2.0 * (y * y + z * z)
+    yaw_z = np.arctan2(t3, t4)
+    
+    # Returns roll, pitch, yaw in a NumPy array in radians
+    return np.array([roll_x, pitch_y, yaw_z])
+
+def get_obs(data):
+    '''Extracts an observation from the mujoco data structure
+    '''
+    q = data.qpos.astype(np.double)
+    dq = data.qvel.astype(np.double)
+    quat = data.sensor('orientation').data[[1, 2, 3, 0]].astype(np.double)
+    r = R.from_quat(quat)
+    v = r.apply(data.qvel[:3], inverse=True).astype(np.double)  # In the base frame
+    omega = data.sensor('angular-velocity').data.astype(np.double)
+    gvec = r.apply(np.array([0., 0., -1.]), inverse=True).astype(np.double)
+    return (q, dq, quat, v, omega, gvec)
+
+def pd_control(target_q, q, kp, target_dq, dq, kd):
+    '''Calculates torques from position commands
+    '''
+    return (target_q - q) * kp + (target_dq - dq) * kd
+
+def run_mujoco(policy, cfg):
+    """
+    Run the Mujoco simulation using the provided policy and configuration.
+
+    Args:
+        policy: The policy used for controlling the simulation.
+        cfg: The configuration object containing simulation settings.
+
+    Returns:
+        None
+    """
+    model = mujoco.MjModel.from_xml_path(cfg.sim_config.mujoco_model_path)
+    model.opt.timestep = cfg.sim_config.dt
+    data = mujoco.MjData(model)
+    mujoco.mj_step(model, data)
+    viewer = mujoco_viewer.MujocoViewer(model, data)
+
+
+    # 设置摄像头跟踪 base_link
+    base_id = model.body(name='base_link').id
+    viewer.cam.type = mujoco.mjtCamera.mjCAMERA_TRACKING
+    viewer.cam.trackbodyid = base_id
+    viewer.cam.distance = 2.5
+    viewer.cam.elevation = -15
+    viewer.cam.azimuth = 90
+    
+    target_q = np.zeros((cfg.env.num_actions), dtype=np.double)
+    action = np.zeros((cfg.env.num_actions), dtype=np.double)
+
+    hist_obs = deque()
+    for _ in range(cfg.env.frame_stack):
+        hist_obs.append(np.zeros([1, cfg.env.num_single_obs], dtype=np.double))
+
+    count_lowlevel = 0
+
+    default_angle = np.zeros((cfg.env.num_actions),dtype=np.double)
+
+    default_angle[0]=cfg.init_state.default_joint_angles['leg_l1_joint']
+    default_angle[1]=cfg.init_state.default_joint_angles['leg_l2_joint']
+    default_angle[2]=cfg.init_state.default_joint_angles['leg_l3_joint']
+    default_angle[3]=cfg.init_state.default_joint_angles['leg_l4_joint']
+    default_angle[4]=cfg.init_state.default_joint_angles['leg_l5_joint']
+    default_angle[5]=cfg.init_state.default_joint_angles['leg_l6_joint']
+
+    default_angle[6]=cfg.init_state.default_joint_angles['leg_r1_joint']
+    default_angle[7]=cfg.init_state.default_joint_angles['leg_r2_joint']
+    default_angle[8]=cfg.init_state.default_joint_angles['leg_r3_joint']
+    default_angle[9]=cfg.init_state.default_joint_angles['leg_r4_joint']
+    default_angle[10]=cfg.init_state.default_joint_angles['leg_r5_joint']
+    default_angle[11]=cfg.init_state.default_joint_angles['leg_r6_joint']
+
+    for _ in tqdm(range(int(cfg.sim_config.sim_duration / cfg.sim_config.dt)), desc="Simulating..."):
+
+        # Obtain an observation
+        q, dq, quat, v, omega, gvec = get_obs(data)
+        q = q[-cfg.env.num_actions:]
+        dq = dq[-cfg.env.num_actions:]
+
+        # 1000hz -> 100hz
+        if count_lowlevel % cfg.sim_config.decimation == 0:
+
+            obs = np.zeros([1, cfg.env.num_single_obs], dtype=np.float32)
+            eu_ang = quaternion_to_euler_array(quat)
+            eu_ang[eu_ang > math.pi] -= 2 * math.pi
+
+            obs[0, 0] = math.sin(2 * math.pi * count_lowlevel * cfg.sim_config.dt  / 0.64)
+            obs[0, 1] = math.cos(2 * math.pi * count_lowlevel * cfg.sim_config.dt  / 0.64)
+            obs[0, 2] = cmd.vx * cfg.normalization.obs_scales.lin_vel
+            obs[0, 3] = cmd.vy * cfg.normalization.obs_scales.lin_vel
+            obs[0, 4] = cmd.dyaw * cfg.normalization.obs_scales.ang_vel
+            # obs[0, 5:17] = q * cfg.normalization.obs_scales.dof_pos
+            obs[0, 5:17] = (q-default_angle) * cfg.normalization.obs_scales.dof_pos
+            obs[0, 17:29] = dq * cfg.normalization.obs_scales.dof_vel
+            obs[0, 29:41] = action
+            obs[0, 41:44] = omega
+            obs[0, 44:47] = eu_ang
+
+            obs = np.clip(obs, -cfg.normalization.clip_observations, cfg.normalization.clip_observations)
+
+            hist_obs.append(obs)
+            hist_obs.popleft()
+
+            policy_input = np.zeros([1, cfg.env.num_observations], dtype=np.float32)
+            for i in range(cfg.env.frame_stack):
+                policy_input[0, i * cfg.env.num_single_obs : (i + 1) * cfg.env.num_single_obs] = hist_obs[i][0, :]
+            action[:] = policy(torch.tensor(policy_input))[0].detach().numpy()
+            action = np.clip(action, -cfg.normalization.clip_actions, cfg.normalization.clip_actions)
+
+            if count_lowlevel>800:
+                target_q = action * cfg.control.action_scale + default_angle
+            else:
+                target_q = default_angle
+
+        target_dq = np.zeros((cfg.env.num_actions), dtype=np.double)
+        # Generate PD control
+        tau = pd_control(target_q, q, cfg.robot_config.kps,
+                        target_dq, dq, cfg.robot_config.kds)  # Calc torques
+        tau = np.clip(tau, -cfg.robot_config.tau_limit, cfg.robot_config.tau_limit)  # Clamp torques
+        data.ctrl = tau
+
+        mujoco.mj_step(model, data)
+        viewer.render()
+        count_lowlevel += 1
+        if count_lowlevel % 100 == 0:
+            z = data.xpos[base_id, 2]        
+            print(f"base_link height: {z:.3f} m")
+
+    viewer.close()
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Deployment script.')
+    parser.add_argument('--load_model', type=str, default='/home/jhuo/rl_learning/humanoid-gym/logs/DreamBot_ppo/exported/policies/policy_1.pt',
+                        help='Run to load from.')
+    parser.add_argument('--terrain', action='store_true', default='plane',help='terrain or plane')
+    args = parser.parse_args()
+
+    class Sim2simCfg(DreamBotCfg):
+
+        class sim_config:
+            if args.terrain:
+                mujoco_model_path = f'{LEGGED_GYM_ROOT_DIR}/resources/robots/dreambot/mjcf/dreambot.xml'
+            else:
+                mujoco_model_path = f'{LEGGED_GYM_ROOT_DIR}/resources/robots/dreambot/mjcf/dreambot.xml'
+            sim_duration = 30.0
+            dt = 0.001
+            decimation = 10
+
+        class robot_config:
+            kps = np.array([90,90,30,90,60,30,90,90,30,90,60,30], dtype=np.double)
+            kds = np.array([6 ,6 ,3 ,6 ,3 ,3 ,6 ,6 ,3 ,6 ,3 ,3 ], dtype=np.double)
+            tau_limit = 200. * np.ones(12, dtype=np.double)
+
+    policy = torch.jit.load(args.load_model)
+    run_mujoco(policy, Sim2simCfg())

@@ -13,6 +13,7 @@ enum class Comm : uint8_t {
   SetPosZero    = 0x06,
   GetParam      = 0x11,
   SetParam      = 0x12,
+  DataSave      = 0x16,
 };
 
 struct IdMeta {
@@ -60,6 +61,18 @@ inline void be16_store(std::array<uint8_t,8>& d, int idx, uint16_t v) {
 
 inline float pvtt_decode_u16(uint16_t u, float range_plus_minus) {
   return ((2.0f * float(u) / 65535.0f) - 1.0f) * range_plus_minus;
+}
+
+// 参数读写是 little-endian（和 PVTT 的 be16 不同）
+inline uint16_t le16_load(const uint8_t* d, int idx) {
+  return (uint16_t)d[idx] | ((uint16_t)d[idx + 1] << 8);
+}
+
+inline uint32_t le32_load(const uint8_t* d, int idx) {
+  return (uint32_t)d[idx] |
+         ((uint32_t)d[idx + 1] << 8) |
+         ((uint32_t)d[idx + 2] << 16) |
+         ((uint32_t)d[idx + 3] << 24);
 }
 
 } // namespace rs

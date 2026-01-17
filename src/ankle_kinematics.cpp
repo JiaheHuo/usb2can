@@ -221,7 +221,7 @@ static bool ik_one_motor(const Vector3d& A, const Vector3d& B, const Vector3d& C
   if (rho < -1.0 || rho > 1.0) return false;
 
   const double c = std::acos(rho);
-  th_minus = phi - c; // 你原代码用的这支
+  th_minus = phi - c;
   th_plus  = phi + c;
   return true;
 }

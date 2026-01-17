@@ -21,15 +21,15 @@ devices:
       - channel: 1
         motors:
           # 左腿：髋 pitch/roll/yaw
-          - { motorName: L_hip_pitch, id: 1, type: RS04, enabled: false, group: "u1b1", kp: 60, kd: 2.0 }
-          - { motorName: L_hip_roll,  id: 2, type: RS04, enabled: false, group: "u1b1", kp: 60, kd: 2.0 }
-          - { motorName: L_hip_yaw,   id: 3, type: RS02, enabled: false, group: "u1b1", kp: 40, kd: 1.5 }
+          - { motorName: L_hip_pitch, default_joint_angle_rad:  0.25, default_motor_angle_rad:  0.25, id: 1, type: RS04, enabled: true, group: "u1b1", kp: 150, kd: 2.0 }
+          - { motorName: L_hip_roll,  default_joint_angle_rad:  0.00, default_motor_angle_rad:  0.00, id: 2, type: RS04, enabled: true, group: "u1b1", kp: 90, kd: 2.0 }
+          - { motorName: L_hip_yaw,   default_joint_angle_rad:  0.00, default_motor_angle_rad:  0.00, id: 3, type: RS02, enabled: true, group: "u1b1", kp: 40, kd: 1.5 }
       - channel: 2
         motors:
           # 左腿：膝 + 踝左右侧
-          - { motorName: L_knee,      id: 1, type: RS04, enabled: true, group: "u1b2", kp: 60, kd: 2.0 }
-          - { motorName: L_ankle_L,   id: 2, type: RS02, enabled: false, group: "u1b2", kp: 40, kd: 1.5 }
-          - { motorName: L_ankle_R,   id: 3, type: RS02, enabled: false, group: "u1b2", kp: 40, kd: 1.5 }
+          - { motorName: L_knee,      default_joint_angle_rad: -0.45, default_motor_angle_rad: -0.45, id: 1, type: RS04, enabled: true, group: "u1b2", kp: 150, kd: 2.0 }
+          - { motorName: L_ankle_L,   default_joint_angle_rad: -0.20, default_motor_angle_rad:  0.20, id: 2, type: RS02, enabled: true, group: "u1b2", kp: 90, kd: 1.5 }
+          - { motorName: L_ankle_R,   default_joint_angle_rad:  0.00, default_motor_angle_rad: -0.20, id: 3, type: RS02, enabled: true, group: "u1b2", kp: 90, kd: 1.5 }
 
   - name: usb2can2
     path: /dev/USB2CAN2
@@ -37,12 +37,12 @@ devices:
       - channel: 1
         motors:
           # 右腿：髋 pitch/roll/yaw
-          - { motorName: R_hip_pitch, id: 1, type: RS04, enabled: false, group: "u2b1", kp: 60, kd: 2.0 }
-          - { motorName: R_hip_roll,  id: 2, type: RS04, enabled: false, group: "u2b1", kp: 60, kd: 2.0 }
-          - { motorName: R_hip_yaw,   id: 3, type: RS02, enabled: false, group: "u2b1", kp: 40, kd: 1.5 }
+          - { motorName: R_hip_pitch, default_joint_angle_rad: -0.25, default_motor_angle_rad: -0.25, id: 1, type: RS04, enabled: true, group: "u2b1", kp: 150, kd: 2.0 }
+          - { motorName: R_hip_roll,  default_joint_angle_rad:  0.00, default_motor_angle_rad:  0.00, id: 2, type: RS04, enabled: true, group: "u2b1", kp: 90, kd: 2.0 }
+          - { motorName: R_hip_yaw,   default_joint_angle_rad:  0.00, default_motor_angle_rad:  0.00, id: 3, type: RS02, enabled: true, group: "u2b1", kp: 40, kd: 1.5 }
       - channel: 2
         motors:
           # 右腿：膝 + 踝左右侧
-          - { motorName: R_knee,      id: 1, type: RS04, enabled: false, group: "u2b2", kp: 60, kd: 2.0 }
-          - { motorName: R_ankle_L,   id: 2, type: RS02, enabled: false, group: "u2b2", kp: 40, kd: 1.5 }
-          - { motorName: R_ankle_R,   id: 3, type: RS02, enabled: false, group: "u2b2", kp: 40, kd: 1.5 }
+          - { motorName: R_knee,      default_joint_angle_rad:  0.45, default_motor_angle_rad:  0.45, id: 1, type: RS04, enabled: true, group: "u2b2", kp: 150, kd: 2.0 }
+          - { motorName: R_ankle_L,   default_joint_angle_rad: -0.20, default_motor_angle_rad:  0.20, id: 2, type: RS02, enabled: true, group: "u2b2", kp: 90, kd: 1.5 }
+          - { motorName: R_ankle_R,   default_joint_angle_rad:  0.00, default_motor_angle_rad: -0.20, id: 3, type: RS02, enabled: true, group: "u2b2", kp: 90, kd: 1.5 }

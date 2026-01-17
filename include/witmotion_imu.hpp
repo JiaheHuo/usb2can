@@ -98,7 +98,7 @@ private:
 class WitMotionImuRunner {
 public:
   struct Options {
-    std::string port = "/dev/ttyUSB0";
+    std::string port = "/dev/imu";
     int baud = 921600;          // 你要求默认 921600
     bool calib_accel_on_start = (IMU_CALIB_ACCEL_ON_START != 0);
     bool calib_angleref_on_start = (IMU_CALIB_ANGLEREF_ON_START != 0);

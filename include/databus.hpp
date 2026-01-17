@@ -1,47 +1,46 @@
 #pragma once
-#include <vector>
-#include <string>
-#include <cstdint>
-#include <cstdio>
-#include <chrono>
-#include <cmath>
-#include <algorithm>
 
-// ====== DataBus: 单线程版本（无锁）======
-// 约定：main loop 是唯一读写者，不需要 mutex
+#include <atomic>
+#include <chrono>
+#include <cstdint>
+#include <shared_mutex>
+#include <string>
+#include <thread>
+#include <vector>
+
+// Thread-safe data bus that holds motor/joint/IMU state plus command targets.
+// A background time thread updates the unified time stamps to keep all modules
+// aligned without blocking their own worker loops.
 
 enum class CtrlMode : uint8_t {
   DISABLE = 0,
-  MOTION  = 1,   // pos/vel + kp/kd （典型 PD）
-  TORQUE  = 2    // 纯力矩
+  MOTION  = 1,
+  TORQUE  = 2
 };
 
 struct MotorCmd {
   CtrlMode mode = CtrlMode::DISABLE;
   bool enable   = false;
 
-  // 目标量
   float q_des   = 0.f;   // rad
   float dq_des  = 0.f;   // rad/s
   float tau_ff  = 0.f;   // Nm
 
-  // 增益
   float kp      = 0.f;
   float kd      = 0.f;
 
-  // 备用：你们协议里可能还有“控制字/flags”，这里留扩展口
   uint32_t flags = 0;
+  uint64_t stamp = 0;
 };
 
 struct JointCmd {
-  // 目标量
-  float q_joint_des   = 0.f;   // rad
-  float dq_joint_des  = 0.f;   // rad/s
-  float tau_joint_ff  = 0.f;   // Nm
-
-  // 增益
-  float kp_joint      = 0.f;
-  float kd_joint      = 0.f;
+  float q_des      = 0.f;   // rad
+  float dq_des     = 0.f;   // rad/s
+  float tau_ff     = 0.f;   // Nm
+  float kp         = 0.f;
+  float kd         = 0.f;
+  uint64_t stamp   = 0;
+  bool enable      = false;
 };
 
 struct MotorState {
@@ -51,149 +50,297 @@ struct MotorState {
   float tau     = 0.f;
   float temp    = 0.f;
   uint32_t age_ms = 0;
+  uint64_t stamp  = 0;
 };
+
 struct JointState {
-  double q_joint;
-  double dq_joint;
-  double tau_joint;
+  double q_joint   = 0.0;
+  double dq_joint  = 0.0;
+  double tau_joint = 0.0;
+  uint32_t age_ms  = 0;
+  uint64_t stamp   = 0;
 };
+
 struct ImuBusState {
   bool online = false;
   uint64_t seq = 0;
 
-  // accel (m/s^2)
   float ax = 0.f, ay = 0.f, az = 0.f;
-  // gyro (rad/s)
   float gx = 0.f, gy = 0.f, gz = 0.f;
-  // euler (deg)
   float roll_deg = 0.f, pitch_deg = 0.f, yaw_deg = 0.f;
 
   uint32_t age_ms = 0;
+  uint64_t stamp  = 0;
 };
-struct SineProfile {
-  // 对选定电机做 q_des = q0 + amp * sin(2*pi*f*t)
-  float amp_rad = 0.3f;
-  float freq_hz = 0.5f;
-  float kp      = 30.f;
-  float kd      = 2.0f;
 
-  // sine 相对哪个基准（标0/记录当前角度）
-  float q0      = 0.f;
-  bool  armed   = false; // 是否已完成“记录 q0”
+struct BusTime {
+  double system_sec = 0.0; // since databus start
+  double policy_sec = 0.0; // since policy enter
+  uint64_t tick     = 0;   // incremented by time thread
+};
+
+struct BusSnapshot {
+  std::vector<MotorCmd>   motor_cmds;
+  std::vector<MotorState> motor_states;
+  std::vector<JointCmd>   joint_cmds;
+  std::vector<JointState> joint_states;
+  ImuBusState imu;
+  BusTime time;
+  std::vector<std::string> motor_names;
+  std::vector<std::string> joint_names;
 };
 
 class DataBus {
 public:
-  explicit DataBus(int n_motor = 0) { resize(n_motor); }
+  explicit DataBus(std::size_t n_motor = 0);
+  ~DataBus();
 
-  void resize(int n_motor) {
-    motorCmds_.assign(n_motor, MotorCmd{});
-    motorStates_.assign(n_motor, MotorState{});
-    jointCmds_.assign(n_motor,JointCmd{});
-    jointStates_.assign(n_motor,JointState{});
-    sine_.assign(n_motor, SineProfile{});
-    imu_ = ImuBusState{};
-  }
+  void resize(std::size_t n_motor);
+  void set_names(const std::vector<std::string>& motors,
+                 const std::vector<std::string>& joints);
 
-  int size() const { return (int)motorCmds_.size(); }
+  std::size_t size() const;
 
-  // -------- motorCmd/motorState 读写 --------
-  MotorCmd&       motorCmd(int i)       { return motorCmds_.at(i); }
-  const MotorCmd& motorCmd(int i) const { return motorCmds_.at(i); }
+  // Background time loop (provides a dedicated thread for this class).
+  void start();
+  void stop();
 
-  MotorState&       motorState(int i)       { return motorStates_.at(i); }
-  const MotorState& motorState(int i) const { return motorStates_.at(i); }
+  // Policy timing hooks.
+  void mark_policy_start();
+  void mark_policy_stop();
+  void set_policy_time(double policy_sec);
 
-  // -------- jointCmd/jointState 读写 --------
-  JointCmd&       jointCmd(int i)       { return jointCmds_.at(i); }
-  const JointCmd& jointCmd(int i) const { return jointCmds_.at(i); }
+  BusTime time() const;
 
-  JointState&       jointState(int i)       { return jointStates_.at(i); }
-  const JointState& jointState(int i) const { return jointStates_.at(i); }
+  // Write APIs
+  void update_motor_state(std::size_t i, const MotorState& s);
+  void update_motor_cmd(std::size_t i, const MotorCmd& c);
+  void update_joint_state(std::size_t i, const JointState& s);
+  void update_joint_cmd(std::size_t i, const JointCmd& c);
+  void update_imu(const ImuBusState& imu);
 
-  SineProfile&       sine(int i)       { return sine_.at(i); }
-  const SineProfile& sine(int i) const { return sine_.at(i); }
+  // Read APIs
+  MotorState motor_state(std::size_t i) const;
+  MotorCmd   motor_cmd(std::size_t i) const;
+  JointState joint_state(std::size_t i) const;
+  JointCmd   joint_cmd(std::size_t i) const;
+  ImuBusState imu() const;
 
-  ImuBusState& imu() {return imu_;}
-  const ImuBusState& imu() const { return imu_; }
+  std::vector<MotorCmd>   motor_cmds() const;
+  std::vector<JointCmd>   joint_cmds() const;
+  std::vector<MotorState> motor_states() const;
+  std::vector<JointState> joint_states() const;
 
-  // -------- 常用操作：统一使能/失能 --------
-  void disable_all() {
-    for (auto &c : motorCmds_) { c = MotorCmd{}; }
-  }
+  BusSnapshot snapshot() const;
 
-  // -------- 常用操作：把某电机“当前角度”记为 sine 的零点 --------
-  void arm_sine_zero(int i) {
-    sine_.at(i).q0 = motorStates_.at(i).q;
-    sine_.at(i).armed = true;
-  }
+  void disable_all();
 
-  // -------- 常用操作：生成 sine 指令（写入 databus.cmd）--------
-  void write_sine_cmd(int i, double t_sec) {
-    auto &sp = sine_.at(i);
-    auto &c  = motorCmds_.at(i);
-
-    if (!sp.armed) {
-      // 没 arm 之前，默认保持 disable，避免跑飞
-      c = MotorCmd{};
-      return;
-    }
-
-    const double w = 2.0 * M_PI * (double)sp.freq_hz;
-    const float q_des = sp.q0 + sp.amp_rad * std::sin(w * t_sec);
-
-    c.enable = true;
-    c.mode   = CtrlMode::MOTION;
-    c.q_des  = q_des;
-    c.dq_des = 0.f;
-    c.tau_ff = 0.f;
-    c.kp     = sp.kp;
-    c.kd     = sp.kd;
-  }
-
-  // -------- 打印：按你们现有风格输出 --------
-  void print_telemetry_line(const char* title = "Telemetry") const {
-    std::printf("==== %s motors=%d ====\n", title, size());
-    {
-      const auto &u = imu_;
-      std::printf(
-          "IMU online=%d seq=%llu age=%ums | "
-          "acc=% .3f % .3f % .3f  gyro=% .3f % .3f % .3f  rpy_deg=% .2f % .2f % .2f\n",
-          (int)u.online,
-          (unsigned long long)u.seq,
-          u.age_ms,
-          u.ax, u.ay, u.az,
-          u.gx, u.gy, u.gz,
-          u.roll_deg, u.pitch_deg, u.yaw_deg);
-    }
-    for (int i = 0; i < size(); ++i)
-    {
-      const auto &s = motorStates_[i];
-      const auto &c = motorCmds_[i];
-      std::printf(
-          "M[%02d] online=%d q=% .4f dq=% .4f tau=% .4f temp=% .1f age=%ums | "
-          "motorCmd(%s,en=%d) qd=% .4f vd=% .4f tq=% .4f kp=%.1f kd=%.1f\n",
-          i,
-          (int)s.online, s.q, s.dq, s.tau, s.temp, s.age_ms,
-          mode_str(c.mode), (int)c.enable, c.q_des, c.dq_des, c.tau_ff, c.kp, c.kd);
-    }
-  }
 private:
-  static const char* mode_str(CtrlMode m) {
-    switch(m){
-      case CtrlMode::DISABLE: return "DISABLE";
-      case CtrlMode::MOTION:  return "MOTION";
-      case CtrlMode::TORQUE:  return "TORQUE";
-      default: return "UNKNOWN";
-    }
-  }
+  void time_thread_fn_();
 
-  std::vector<MotorCmd> motorCmds_;
-  std::vector<JointCmd> jointCmds_;
+  mutable std::shared_mutex mtx_;
+  std::vector<MotorCmd> motor_cmds_;
+  std::vector<JointCmd> joint_cmds_;
 
-  std::vector<MotorState> motorStates_;
-  std::vector<JointState> jointStates_;
+  std::vector<MotorState> motor_states_;
+  std::vector<JointState> joint_states_;
 
-  std::vector<SineProfile> sine_;
-  ImuBusState imu_;
+  std::vector<std::string> motor_names_;
+  std::vector<std::string> joint_names_;
+
+  ImuBusState imu_{};
+  BusTime time_{};
+
+  std::atomic<bool> running_{false};
+  std::atomic<bool> policy_running_{false};
+  std::thread time_thread_;
+  std::chrono::steady_clock::time_point start_tp_;
+  std::chrono::steady_clock::time_point policy_tp_;
 };
+
+// ================= Implementation =================
+
+inline DataBus::DataBus(std::size_t n_motor) { resize(n_motor); }
+
+inline DataBus::~DataBus() { stop(); }
+
+inline void DataBus::resize(std::size_t n_motor) {
+  std::unique_lock lk(mtx_);
+  motor_cmds_.assign(n_motor, MotorCmd{});
+  motor_states_.assign(n_motor, MotorState{});
+  joint_cmds_.assign(n_motor, JointCmd{});
+  joint_states_.assign(n_motor, JointState{});
+  motor_names_.assign(n_motor, "");
+  joint_names_.assign(n_motor, "");
+}
+
+inline void DataBus::set_names(const std::vector<std::string>& motors,
+                               const std::vector<std::string>& joints) {
+  std::unique_lock lk(mtx_);
+  motor_names_ = motors;
+  joint_names_ = joints;
+  if (joint_names_.size() != motor_names_.size()) {
+    joint_names_.resize(motor_names_.size());
+  }
+}
+
+inline std::size_t DataBus::size() const {
+  std::shared_lock lk(mtx_);
+  return motor_cmds_.size();
+}
+
+inline void DataBus::start() {
+  bool expected = false;
+  if (!running_.compare_exchange_strong(expected, true)) return;
+  start_tp_ = std::chrono::steady_clock::now();
+  policy_tp_ = start_tp_;
+  time_thread_ = std::thread(&DataBus::time_thread_fn_, this);
+}
+
+inline void DataBus::stop() {
+  bool expected = true;
+  if (!running_.compare_exchange_strong(expected, false)) return;
+  if (time_thread_.joinable()) time_thread_.join();
+}
+
+inline void DataBus::mark_policy_start() {
+  policy_running_.store(true, std::memory_order_relaxed);
+  policy_tp_ = std::chrono::steady_clock::now();
+}
+
+inline void DataBus::mark_policy_stop() {
+  policy_running_.store(false, std::memory_order_relaxed);
+  std::unique_lock lk(mtx_);
+  time_.policy_sec = 0.0;
+}
+
+inline void DataBus::set_policy_time(double policy_sec) {
+  std::unique_lock lk(mtx_);
+  time_.policy_sec = policy_sec;
+}
+
+inline BusTime DataBus::time() const {
+  std::shared_lock lk(mtx_);
+  return time_;
+}
+
+inline void DataBus::update_motor_state(std::size_t i, const MotorState& s) {
+  std::unique_lock lk(mtx_);
+  if (i >= motor_states_.size()) return;
+  motor_states_[i] = s;
+}
+
+inline void DataBus::update_motor_cmd(std::size_t i, const MotorCmd& c) {
+  std::unique_lock lk(mtx_);
+  if (i >= motor_cmds_.size()) return;
+  motor_cmds_[i] = c;
+}
+
+inline void DataBus::update_joint_state(std::size_t i, const JointState& s) {
+  std::unique_lock lk(mtx_);
+  if (i >= joint_states_.size()) return;
+  joint_states_[i] = s;
+}
+
+inline void DataBus::update_joint_cmd(std::size_t i, const JointCmd& c) {
+  std::unique_lock lk(mtx_);
+  if (i >= joint_cmds_.size()) return;
+  joint_cmds_[i] = c;
+}
+
+inline void DataBus::update_imu(const ImuBusState& imu) {
+  std::unique_lock lk(mtx_);
+  imu_ = imu;
+}
+
+inline MotorState DataBus::motor_state(std::size_t i) const {
+  std::shared_lock lk(mtx_);
+  if (i >= motor_states_.size()) return MotorState{};
+  return motor_states_[i];
+}
+
+inline MotorCmd DataBus::motor_cmd(std::size_t i) const {
+  std::shared_lock lk(mtx_);
+  if (i >= motor_cmds_.size()) return MotorCmd{};
+  return motor_cmds_[i];
+}
+
+inline JointState DataBus::joint_state(std::size_t i) const {
+  std::shared_lock lk(mtx_);
+  if (i >= joint_states_.size()) return JointState{};
+  return joint_states_[i];
+}
+
+inline JointCmd DataBus::joint_cmd(std::size_t i) const {
+  std::shared_lock lk(mtx_);
+  if (i >= joint_cmds_.size()) return JointCmd{};
+  return joint_cmds_[i];
+}
+
+inline ImuBusState DataBus::imu() const {
+  std::shared_lock lk(mtx_);
+  return imu_;
+}
+
+inline std::vector<MotorCmd> DataBus::motor_cmds() const {
+  std::shared_lock lk(mtx_);
+  return motor_cmds_;
+}
+
+inline std::vector<JointCmd> DataBus::joint_cmds() const {
+  std::shared_lock lk(mtx_);
+  return joint_cmds_;
+}
+
+inline std::vector<MotorState> DataBus::motor_states() const {
+  std::shared_lock lk(mtx_);
+  return motor_states_;
+}
+
+inline std::vector<JointState> DataBus::joint_states() const {
+  std::shared_lock lk(mtx_);
+  return joint_states_;
+}
+
+inline BusSnapshot DataBus::snapshot() const {
+  std::shared_lock lk(mtx_);
+  BusSnapshot s;
+  s.motor_cmds = motor_cmds_;
+  s.motor_states = motor_states_;
+  s.joint_cmds = joint_cmds_;
+  s.joint_states = joint_states_;
+  s.imu = imu_;
+  s.time = time_;
+  s.motor_names = motor_names_;
+  s.joint_names = joint_names_;
+  return s;
+}
+
+inline void DataBus::disable_all() {
+  std::unique_lock lk(mtx_);
+  for (auto& c : motor_cmds_) c = MotorCmd{};
+  for (auto& c : joint_cmds_) c = JointCmd{};
+}
+
+inline void DataBus::time_thread_fn_() {
+  start_tp_ = std::chrono::steady_clock::now();
+  while (running_.load(std::memory_order_relaxed)) {
+    auto now = std::chrono::steady_clock::now();
+    const double sys_sec = std::chrono::duration<double>(now - start_tp_).count();
+    const double policy_sec =
+        policy_running_.load(std::memory_order_relaxed)
+            ? std::chrono::duration<double>(now - policy_tp_).count()
+            : 0.0;
+
+    {
+      std::unique_lock lk(mtx_);
+      time_.system_sec = sys_sec;
+      if (policy_running_.load(std::memory_order_relaxed)) {
+        time_.policy_sec = policy_sec;
+      }
+      time_.tick++;
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+}

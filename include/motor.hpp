@@ -7,6 +7,8 @@
 #include "rs_protocol.hpp"
 #include "actuator.hpp"
 #include "stats.hpp"
+#include <condition_variable>
+#include <chrono>
 
 struct PVTT { float p=0, v=0, t=0, temp=0; };
 
@@ -41,6 +43,15 @@ public:
   // --- rx hook (router调用) ---
   void on_frame(const Usb2CanFrame& f);
 
+  // --- set zero_sta (0~2pi)-> (-pi~pi)
+
+  void data_save(); // 0x16
+  bool set_zero_sta(uint8_t v, bool persist=true, int timeout_ms=100);
+  std::optional<uint8_t> get_zero_sta(int timeout_ms=100);
+
+  std::optional<uint32_t> get_param_u32_blocking(uint16_t index, int timeout_ms=100);
+  std::optional<float>    get_param_f32_blocking(uint16_t index, int timeout_ms=100);
+
   std::optional<PVTT> last_pvtt() const;
   std::string motorName_;
 
@@ -58,4 +69,11 @@ private:
   mutable std::mutex mu_;
   PVTT pvtt_{};
   bool has_pvtt_ = false;
+
+  // ---- param reply cache (Type17 reply) ----
+  mutable std::condition_variable cv_param_;
+  uint32_t last_param_seq_ = 0;
+  bool     last_param_valid_ = false;
+  uint16_t last_param_index_ = 0;
+  uint32_t last_param_u32_   = 0;
 };

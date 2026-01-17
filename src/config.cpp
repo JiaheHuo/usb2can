@@ -31,6 +31,7 @@ AppConfig load_config_yaml(const std::string& file) {
 
       for (const auto& mN : busN["motors"]) {
         MotorSpec ms;
+        
         ms.id = (uint8_t)mN["id"].as<int>();
         ms.type = actuator_from_string(mN["type"].as<std::string>());
         ms.enabled = mN["enabled"] ? mN["enabled"].as<bool>() : true;
@@ -38,6 +39,8 @@ AppConfig load_config_yaml(const std::string& file) {
         ms.kp = mN["kp"] ? mN["kp"].as<float>():20.f;
         ms.kd = mN["kd"] ? mN["kd"].as<float>():1.0f;
         ms.motorName = mN["motorName"] ? mN["motorName"].as<std::string>() : "";
+        ms.default_motor_angle_rad = mN["default_motor_angle_rad"]? mN["default_motor_angle_rad"].as<float>() : 0.f;
+        ms.default_joint_angle_rad = mN["default_joint_angle_rad"]? mN["default_joint_angle_rad"].as<float>() : 0.f;
 
         bus.motors.push_back(ms);
       }

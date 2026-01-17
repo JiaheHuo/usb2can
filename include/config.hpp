@@ -13,6 +13,8 @@ struct MotorSpec {
   float kp = 20.f;   // 默认值
   float kd = 1.0f;
   std::string motorName;
+  float default_motor_angle_rad = 0.f;
+  float default_joint_angle_rad = 0.f;
 };
 
 struct BusSpec {

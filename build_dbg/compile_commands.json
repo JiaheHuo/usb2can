@@ -1,0 +1,42 @@
+[
+{
+  "directory": "/home/jhuo/robstride_usb2can_ctrl/build_dbg",
+  "command": "/usr/bin/c++  -DRS_DO_MOTOR_INIT=1 -DRS_ENABLE_TELEMETRY=1 -DUSE_C10D_GLOO -DUSE_DISTRIBUTED -DUSE_RPC -DUSE_TENSORPIPE -I/home/jhuo/robstride_usb2can_ctrl/include -I/home/jhuo/robstride_usb2can_ctrl/third_party/tangair_usb2can -I/home/jhuo/model_based_control/cyborg-test-static-arm/src/src/azureloong_control/third_party/eigen3 -isystem /opt/libtorch/include -isystem /opt/libtorch/include/torch/csrc/api/include    -D_GLIBCXX_USE_CXX11_ABI=1 -O2 -Wall -Wextra -std=gnu++17 -o CMakeFiles/motor_test.dir/src/main.cpp.o -c /home/jhuo/robstride_usb2can_ctrl/src/main.cpp",
+  "file": "/home/jhuo/robstride_usb2can_ctrl/src/main.cpp"
+},
+{
+  "directory": "/home/jhuo/robstride_usb2can_ctrl/build_dbg",
+  "command": "/usr/bin/c++  -DRS_DO_MOTOR_INIT=1 -DRS_ENABLE_TELEMETRY=1 -DUSE_C10D_GLOO -DUSE_DISTRIBUTED -DUSE_RPC -DUSE_TENSORPIPE -I/home/jhuo/robstride_usb2can_ctrl/include -I/home/jhuo/robstride_usb2can_ctrl/third_party/tangair_usb2can -I/home/jhuo/model_based_control/cyborg-test-static-arm/src/src/azureloong_control/third_party/eigen3 -isystem /opt/libtorch/include -isystem /opt/libtorch/include/torch/csrc/api/include    -D_GLIBCXX_USE_CXX11_ABI=1 -O2 -Wall -Wextra -std=gnu++17 -o CMakeFiles/motor_test.dir/src/config.cpp.o -c /home/jhuo/robstride_usb2can_ctrl/src/config.cpp",
+  "file": "/home/jhuo/robstride_usb2can_ctrl/src/config.cpp"
+},
+{
+  "directory": "/home/jhuo/robstride_usb2can_ctrl/build_dbg",
+  "command": "/usr/bin/c++  -DRS_DO_MOTOR_INIT=1 -DRS_ENABLE_TELEMETRY=1 -DUSE_C10D_GLOO -DUSE_DISTRIBUTED -DUSE_RPC -DUSE_TENSORPIPE -I/home/jhuo/robstride_usb2can_ctrl/include -I/home/jhuo/robstride_usb2can_ctrl/third_party/tangair_usb2can -I/home/jhuo/model_based_control/cyborg-test-static-arm/src/src/azureloong_control/third_party/eigen3 -isystem /opt/libtorch/include -isystem /opt/libtorch/include/torch/csrc/api/include    -D_GLIBCXX_USE_CXX11_ABI=1 -O2 -Wall -Wextra -std=gnu++17 -o CMakeFiles/motor_test.dir/src/router.cpp.o -c /home/jhuo/robstride_usb2can_ctrl/src/router.cpp",
+  "file": "/home/jhuo/robstride_usb2can_ctrl/src/router.cpp"
+},
+{
+  "directory": "/home/jhuo/robstride_usb2can_ctrl/build_dbg",
+  "command": "/usr/bin/c++  -DRS_DO_MOTOR_INIT=1 -DRS_ENABLE_TELEMETRY=1 -DUSE_C10D_GLOO -DUSE_DISTRIBUTED -DUSE_RPC -DUSE_TENSORPIPE -I/home/jhuo/robstride_usb2can_ctrl/include -I/home/jhuo/robstride_usb2can_ctrl/third_party/tangair_usb2can -I/home/jhuo/model_based_control/cyborg-test-static-arm/src/src/azureloong_control/third_party/eigen3 -isystem /opt/libtorch/include -isystem /opt/libtorch/include/torch/csrc/api/include    -D_GLIBCXX_USE_CXX11_ABI=1 -O2 -Wall -Wextra -std=gnu++17 -o CMakeFiles/motor_test.dir/src/motor.cpp.o -c /home/jhuo/robstride_usb2can_ctrl/src/motor.cpp",
+  "file": "/home/jhuo/robstride_usb2can_ctrl/src/motor.cpp"
+},
+{
+  "directory": "/home/jhuo/robstride_usb2can_ctrl/build_dbg",
+  "command": "/usr/bin/c++  -DRS_DO_MOTOR_INIT=1 -DRS_ENABLE_TELEMETRY=1 -DUSE_C10D_GLOO -DUSE_DISTRIBUTED -DUSE_RPC -DUSE_TENSORPIPE -I/home/jhuo/robstride_usb2can_ctrl/include -I/home/jhuo/robstride_usb2can_ctrl/third_party/tangair_usb2can -I/home/jhuo/model_based_control/cyborg-test-static-arm/src/src/azureloong_control/third_party/eigen3 -isystem /opt/libtorch/include -isystem /opt/libtorch/include/torch/csrc/api/include    -D_GLIBCXX_USE_CXX11_ABI=1 -O2 -Wall -Wextra -std=gnu++17 -o CMakeFiles/motor_test.dir/src/stats.cpp.o -c /home/jhuo/robstride_usb2can_ctrl/src/stats.cpp",
+  "file": "/home/jhuo/robstride_usb2can_ctrl/src/stats.cpp"
+},
+{
+  "directory": "/home/jhuo/robstride_usb2can_ctrl/build_dbg",
+  "command": "/usr/bin/c++  -DRS_DO_MOTOR_INIT=1 -DRS_ENABLE_TELEMETRY=1 -DUSE_C10D_GLOO -DUSE_DISTRIBUTED -DUSE_RPC -DUSE_TENSORPIPE -I/home/jhuo/robstride_usb2can_ctrl/include -I/home/jhuo/robstride_usb2can_ctrl/third_party/tangair_usb2can -I/home/jhuo/model_based_control/cyborg-test-static-arm/src/src/azureloong_control/third_party/eigen3 -isystem /opt/libtorch/include -isystem /opt/libtorch/include/torch/csrc/api/include    -D_GLIBCXX_USE_CXX11_ABI=1 -O2 -Wall -Wextra -std=gnu++17 -o CMakeFiles/motor_test.dir/src/ankle_kinematics.cpp.o -c /home/jhuo/robstride_usb2can_ctrl/src/ankle_kinematics.cpp",
+  "file": "/home/jhuo/robstride_usb2can_ctrl/src/ankle_kinematics.cpp"
+},
+{
+  "directory": "/home/jhuo/robstride_usb2can_ctrl/build_dbg",
+  "command": "/usr/bin/c++  -DRS_DO_MOTOR_INIT=1 -DRS_ENABLE_TELEMETRY=1 -DUSE_C10D_GLOO -DUSE_DISTRIBUTED -DUSE_RPC -DUSE_TENSORPIPE -I/home/jhuo/robstride_usb2can_ctrl/include -I/home/jhuo/robstride_usb2can_ctrl/third_party/tangair_usb2can -I/home/jhuo/model_based_control/cyborg-test-static-arm/src/src/azureloong_control/third_party/eigen3 -isystem /opt/libtorch/include -isystem /opt/libtorch/include/torch/csrc/api/include    -D_GLIBCXX_USE_CXX11_ABI=1 -O2 -Wall -Wextra -std=gnu++17 -o CMakeFiles/motor_test.dir/src/GridRobot.cpp.o -c /home/jhuo/robstride_usb2can_ctrl/src/GridRobot.cpp",
+  "file": "/home/jhuo/robstride_usb2can_ctrl/src/GridRobot.cpp"
+},
+{
+  "directory": "/home/jhuo/robstride_usb2can_ctrl/build_dbg",
+  "command": "/usr/bin/c++  -DRS_DO_MOTOR_INIT=1 -DRS_ENABLE_TELEMETRY=1 -DUSE_C10D_GLOO -DUSE_DISTRIBUTED -DUSE_RPC -DUSE_TENSORPIPE -I/home/jhuo/robstride_usb2can_ctrl/include -I/home/jhuo/robstride_usb2can_ctrl/third_party/tangair_usb2can -I/home/jhuo/model_based_control/cyborg-test-static-arm/src/src/azureloong_control/third_party/eigen3 -isystem /opt/libtorch/include -isystem /opt/libtorch/include/torch/csrc/api/include    -D_GLIBCXX_USE_CXX11_ABI=1 -O2 -Wall -Wextra -std=gnu++17 -o CMakeFiles/motor_test.dir/src/witmotion_imu.cpp.o -c /home/jhuo/robstride_usb2can_ctrl/src/witmotion_imu.cpp",
+  "file": "/home/jhuo/robstride_usb2can_ctrl/src/witmotion_imu.cpp"
+}
+]
